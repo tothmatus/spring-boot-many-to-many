@@ -30,7 +30,15 @@ public class Tag {
   public Tag() {
 
   }
-  
+  public Tag(String name) {
+    this.name = name;
+  }
+
+  public Tag(String name, Set<Tutorial> tutorials) {
+    this.name = name;
+    this.tutorials = tutorials;
+  }
+
   public long getId() {
     return id;
   }

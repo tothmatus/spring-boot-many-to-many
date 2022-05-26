@@ -3,7 +3,10 @@ package com.bezkoder.spring.hibernate.manytomany.controller;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.bezkoder.spring.hibernate.manytomany.service.TagService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,11 +28,16 @@ public class TagController {
   @Autowired
   private TagRepository tagRepository;
 
+  @Autowired
+  private TagService tagService;
+
+  private static final String NOT_FOUND_TUTORIAL_WITH_ID = "Not found Tutorial with id = ";
+  private static final String NOT_FOUND_TAG_WITH_ID  = "Not found Tag with id = ";
+
   @GetMapping("/tags")
   public ResponseEntity<List<Tag>> getAllTags() {
-    List<Tag> tags = new ArrayList<Tag>();
 
-    tagRepository.findAll().forEach(tags::add);
+    List<Tag> tags = new ArrayList<>(tagRepository.findAll());
 
     if (tags.isEmpty()) {
       return new ResponseEntity<>(HttpStatus.NO_CONTENT);
@@ -41,7 +49,7 @@ public class TagController {
   @GetMapping("/tutorials/{tutorialId}/tags")
   public ResponseEntity<List<Tag>> getAllTagsByTutorialId(@PathVariable(value = "tutorialId") Long tutorialId) {
     if (!tutorialRepository.existsById(tutorialId)) {
-      throw new ResourceNotFoundException("Not found Tutorial with id = " + tutorialId);
+      throw new ResourceNotFoundException(NOT_FOUND_TUTORIAL_WITH_ID + tutorialId);
     }
 
     List<Tag> tags = tagRepository.findTagsByTutorialsId(tutorialId);
@@ -51,7 +59,7 @@ public class TagController {
   @GetMapping("/tags/{id}")
   public ResponseEntity<Tag> getTagsById(@PathVariable(value = "id") Long id) {
     Tag tag = tagRepository.findById(id)
-        .orElseThrow(() -> new ResourceNotFoundException("Not found Tag with id = " + id));
+        .orElseThrow(() -> new ResourceNotFoundException(NOT_FOUND_TAG_WITH_ID + id));
 
     return new ResponseEntity<>(tag, HttpStatus.OK);
   }
@@ -73,17 +81,17 @@ public class TagController {
       
       // tag is existed
       if (tagId != 0L) {
-        Tag _tag = tagRepository.findById(tagId)
-            .orElseThrow(() -> new ResourceNotFoundException("Not found Tag with id = " + tagId));
-        tutorial.addTag(_tag);
+        Tag myTag = tagRepository.findById(tagId)
+            .orElseThrow(() -> new ResourceNotFoundException(NOT_FOUND_TAG_WITH_ID + tagId));
+        tutorial.addTag(myTag);
         tutorialRepository.save(tutorial);
-        return _tag;
+        return myTag;
       }
       
       // add and create new Tag
       tutorial.addTag(tagRequest);
       return tagRepository.save(tagRequest);
-    }).orElseThrow(() -> new ResourceNotFoundException("Not found Tutorial with id = " + tutorialId));
+    }).orElseThrow(() -> new ResourceNotFoundException(NOT_FOUND_TUTORIAL_WITH_ID + tutorialId));
 
     return new ResponseEntity<>(tag, HttpStatus.CREATED);
   }
@@ -101,7 +109,7 @@ public class TagController {
   @DeleteMapping("/tutorials/{tutorialId}/tags/{tagId}")
   public ResponseEntity<HttpStatus> deleteTagFromTutorial(@PathVariable(value = "tutorialId") Long tutorialId, @PathVariable(value = "tagId") Long tagId) {
     Tutorial tutorial = tutorialRepository.findById(tutorialId)
-        .orElseThrow(() -> new ResourceNotFoundException("Not found Tutorial with id = " + tutorialId));
+        .orElseThrow(() -> new ResourceNotFoundException(NOT_FOUND_TUTORIAL_WITH_ID + tutorialId));
     
     tutorial.removeTag(tagId);
     tutorialRepository.save(tutorial);
@@ -115,4 +123,10 @@ public class TagController {
 
     return new ResponseEntity<>(HttpStatus.NO_CONTENT);
   }
+
+  @EventListener(ApplicationReadyEvent.class)
+  public void resetDbs(){
+    tagService.resetDb();
+  }
+
 }
